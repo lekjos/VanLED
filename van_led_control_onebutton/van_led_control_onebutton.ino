@@ -100,7 +100,7 @@ void setup() {
       
 //color button setup
   buttonColor.attachClick(colorChange);
-  buttonColor.attachDoubleClick(patternFade);
+  buttonColor.attachDoubleClick(changePattern);
   buttonDown.setDebounceTicks(70);
   
 //set last state
@@ -343,19 +343,24 @@ void colorChange() {
     Serial.print("start color: ");
     Serial.println(currentColor);
   #endif
- if (currentColor == 1){ //if white change to red
-  currentColor=0;
-  }  else {
-  currentColor=1;  //if red change to white
-  }
-  timeLastChange = millis();
-  writeToMem = true;
 
-  #if DEBUG
-    Serial.print("Color Changed to: ");
-    Serial.println(currentColor);
-  #endif
+  if (patternMode == 1){ // if pattern is on, shut it off
+    patternMode = 0;
+  } else { // otherwise, change color
+    if (currentColor == 1){ //if white change to red
+      currentColor=0;
+      }  else {
+      currentColor=1;  //if red change to white
+      }
+      timeLastChange = millis();
+      writeToMem = true;
+
+      #if DEBUG
+        Serial.print("Color Changed to: ");
+        Serial.println(currentColor);
+      #endif
   }
+}
 
 
 
@@ -387,6 +392,15 @@ void maxBrightness() {
 
   timeLastChange = millis();
   writeToMem = true;
+}
+
+void changePattern(){
+  // change to or from pattern on double click
+  if (patternMode == 1){ 
+  patternMode=0;
+  }  else {
+  patternMode=1;  
+  }
 }
 
 void patternFade() {
