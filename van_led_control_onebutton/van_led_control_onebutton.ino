@@ -39,6 +39,7 @@ float brightnessLED = .1;
 float brightnessLED_white = .1;
 float brightnessLED_red = .1;
 const float fadeAmount = 0.01;
+const int holdStepTime = 45; //ms
 const float minLEDBrightness = 0.05;
 const float maxLEDBrightness = 1.0;
 
@@ -269,7 +270,7 @@ void decreaseBrightness() { //red
       Serial.print("brightness down ");
       Serial.println(brightnessLED);
     #endif
-    delay(120);
+    delay(holdStepTime);
     timeLastChange = millis();
     writeToMem = true;
 }
@@ -297,14 +298,16 @@ void increaseBrightness() {
         Serial.println(blueValue);
       #endif 
 
-  delay(120);
+  delay(holdStepTime);
   timeLastChange = millis();
   writeToMem = true;
 }
 
 void colorChange() {
-  Serial.print("start color: ");
-  Serial.println(currentColor);
+  #if DEBUG
+    Serial.print("start color: ");
+    Serial.println(currentColor);
+  #endif
  if (currentColor == 1){ //if white change to red
   currentColor=0;
   }  else {
