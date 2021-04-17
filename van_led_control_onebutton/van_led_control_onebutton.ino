@@ -38,6 +38,7 @@ OneButton buttonColor(colorChangePin, true);
 float brightnessLED = .1;
 float brightnessLED_white = .1;
 float brightnessLED_red = .1;
+float brightnessLED_pat = .1;
 const float fadeAmount = 0.01;
 const int holdStepTime = 45; //ms
 const float minLEDBrightness = 0.05;
@@ -53,8 +54,22 @@ int currentColor = 0;
 struct memStore {
   float brightness_white;
   float brightness_red;
+  float brightness_pat;
   int color;
 };
+
+//PatternFade variables
+int patternMode = 0;
+int colorMode = 0; //color mode to control LED color
+//vars to fade led
+int prevFadeVal = 0;
+int currentFadeVal = 0;
+boolean increasing = true;
+int fadeVal = 5; //value to step when increasing/decreasing, recommended to be 1 or 5, larger numbers will have problems lighting up
+int fadeMAX = 255; //maximum fade value
+int fadeMIN = 0;   //minimum fade value
+int fadeDelay = 30;//delay between each step
+
 
 void setup() {
   // initialize serial communication at 9600 bits per second:
@@ -85,6 +100,7 @@ void setup() {
       
 //color button setup
   buttonColor.attachClick(colorChange);
+  buttonColor.attachDoubleClick(patternFade);
   buttonDown.setDebounceTicks(70);
   
 //set last state
@@ -92,6 +108,7 @@ void setup() {
   EEPROM.get(addr, customVar);
   brightnessLED_white = customVar.brightness_white;
   brightnessLED_red = customVar.brightness_red;
+  brightnessLED_pat = customVar.brightness_pat;
   currentColor = customVar.color;
 
   
@@ -108,17 +125,22 @@ void loop(){
   delay(5);
 
 //Turn on LEDs based on current color
-  if (currentColor == 1){
-    whiteON();
-    brightnessLED = brightnessLED_white;
-    rgbShow();
-  }
-  if (currentColor == 0) {
-    redON();
-    brightnessLED = brightnessLED_red;
-    rgbShow();
+  if (patternMode == 0) {
+    if (currentColor == 1){
+      whiteON();
+      brightnessLED = brightnessLED_white;
+      rgbShow();
+    } else if (currentColor == 0) {
+      redON();
+      brightnessLED = brightnessLED_red;
+      rgbShow();
+    }
+  } else if (patternMode == 1) {
+    patternMode();
+    brightnessLED = brightnessLED_pat;
   }
 
+  
 //wait 1 second to write to EEPROM
   if (writeToMem == true){
     if (timeLastChange + memWriteInterval <= millis()){
@@ -246,8 +268,10 @@ void rgbShow() {
   redValue = int(redValue * brightnessLED);
   greenValue = int(greenValue * brightnessLED);
   blueValue = int(blueValue * brightnessLED);
-  if (blueValue <= 3 && blueValue != 0) {
-    blueValue =3;
+  if patternMode == 0 {
+    if (blueValue <= 3 && blueValue != 0) {
+      blueValue =3;
+    }
   }
   //once value is calculated, show the LED color
   analogWrite(redPin, redValue);
@@ -256,6 +280,7 @@ void rgbShow() {
 }
 
 void decreaseBrightness() { //red
+  if (patternMode == 0){
     if (currentColor == 1){
       if(brightnessLED_white > (minLEDBrightness + fadeAmount)){
         brightnessLED_white -= fadeAmount;
@@ -265,6 +290,11 @@ void decreaseBrightness() { //red
         brightnessLED_red -= fadeAmount;
      }      
     }
+  } else if (patternMode == 1) {
+    if(brightnessLED_pat > (minLEDBrightness + fadeAmount)){
+        brightnessLED_pat -= fadeAmount;
+    }
+  }
     
     #if DEBUG        
       Serial.print("brightness down ");
@@ -276,7 +306,7 @@ void decreaseBrightness() { //red
 }
 
 void increaseBrightness() {
-    
+  if (patternMode == 0){
     if (currentColor == 1){
       if (brightnessLED_white < (maxLEDBrightness - fadeAmount)){
         brightnessLED_white += fadeAmount;
@@ -286,6 +316,11 @@ void increaseBrightness() {
         brightnessLED_red += fadeAmount;   
        }  
     }
+  } else if (patternMode == 1) {
+    if (brightnessLED_pat < (maxLEDBrightness - fadeAmount)){
+        brightnessLED_pat += fadeAmount;   
+       } 
+  }
 
       #if DEBUG
         Serial.print("brightness up ");
@@ -325,24 +360,231 @@ void colorChange() {
 
 
 void minBrightness() {
-  if (currentColor == 1){ //white
-    brightnessLED_white = minLEDBrightness;
-  } else {
-    brightnessLED_red = minLEDBrightness;
+  if (patternMode == 0){
+    if (currentColor == 1){ //white
+      brightnessLED_white = minLEDBrightness;
+    } else {
+      brightnessLED_red = minLEDBrightness;
+    }
+  } else if (patternMode == 1){
+    brightnessLED_pat = minLEDBrightness;
   }
-  
   timeLastChange = millis();
   writeToMem = true;
 }
 
 void maxBrightness() {
-   if (currentColor
-   == 1){ //white
-    brightnessLED_white = maxLEDBrightness;
-  } else {
-    brightnessLED_red = maxLEDBrightness;
-  } 
+  if (patternMode == 0){
+    if (currentColor
+    == 1){ //white
+      brightnessLED_white = maxLEDBrightness;
+    } else {
+      brightnessLED_red = maxLEDBrightness;
+    } 
+  } else if (patternMode == 1){
+    brightnessLED_pat = minLEDBrightness;
+  }
 
   timeLastChange = millis();
   writeToMem = true;
 }
+
+void patternFade() {
+
+  switch (colorMode) {
+    case 1://FADE RED
+      redValue = currentFadeVal;
+      greenValue = 0;
+      blueValue = 0;
+
+      rgbShow();
+      break;
+    //========== END FADE RED ==========
+
+    case 2://FADE ORANGE
+      redValue = currentFadeVal;
+      greenValue = currentFadeVal * 0.498; // 128/255 = ~0.498039
+      blueValue = 0;
+
+      rgbShow();
+
+      if (redValue > 0 && greenValue == 0) {
+        //tertiary component is 1/2, so when it calculates to decimal with fade value,
+        //it will be basically be off, make sure to turn off other color so that
+        //it does not just show the other color
+        redValue = 0;
+      }
+      // takes x amount of steps if you do not set it to zero for certain brightness (i.e. takes 8 more steps to turn off for 0.1)
+      //Serial.print("Red Value =");
+      //Serial.println( int((currentFadeVal) * brightnessLED));
+
+      //Serial.print("Green Value =");
+      //Serial.println( int((currentFadeVal * 0.498) * brightnessLED));
+      break;
+    //========== END FADE ORANGE ==========
+
+    case 3://FADE YELLOW
+      redValue = currentFadeVal;
+      greenValue = currentFadeVal;
+      blueValue = 0;
+
+      rgbShow();
+      break;
+    //========== END FADE YELLOW ==========
+
+    case 4://FADE CHARTRUESE
+      redValue = currentFadeVal * 0.498; // 128/255 = ~0.498039
+      greenValue = currentFadeVal;
+      blueValue = 0;
+
+      rgbShow();
+
+      if (greenValue > 0 && redValue == 0) {
+        //tertiary component is 1/2, so when it calculates to decimal with fade value,
+        //it will be basically be off, make sure to turn off other color so that
+        //it does not just show the other color
+        greenValue = 0;
+      }
+      break;
+    //========== END FADE CHARTRUESE ==========
+
+    case 5://FADE GREEN
+      redValue = 0;
+      greenValue = currentFadeVal;
+      blueValue = 0;
+
+      rgbShow();
+      break;
+    //========== END FADE GREEN ==========
+
+    case 6://FADE SPRING GREEN
+      redValue = 0;
+      greenValue = currentFadeVal;
+      blueValue = currentFadeVal * 0.498; // 128/255 = ~0.498039
+
+      rgbShow();
+
+      if (greenValue > 0 && blueValue == 0) {
+        //tertiary component is 1/2, so when it calculates to decimal with fade value,
+        //it will be basically be off, make sure to turn off other color so that
+        //it does not just show the other color
+        greenValue = 0;
+      }
+      break;
+    //========== END FADE SPRING GREEN ==========
+
+    case 7://FADE CYAN
+      redValue = 0;
+      greenValue = currentFadeVal;
+      blueValue = currentFadeVal;
+
+      rgbShow();
+      break;
+    //========== END FADE CYAN ==========
+
+    case 8://FADE AZURE
+      redValue = 0;
+      greenValue = currentFadeVal * 0.498; // 128/255 = ~0.498039
+      blueValue = currentFadeVal;
+
+      rgbShow();
+      if (blueValue > 0 && greenValue == 0) {
+        //tertiary component is 1/2, so when it calculates to decimal with fade value,
+        //it will be basically be off, make sure to turn off other color so that
+        //it does not just show the other color
+        blueValue = 0;
+      }
+      break;
+    //========== END FADE AZURE ==========
+
+    case 9://FADE BLUE
+      redValue = 0;
+      greenValue = 0;
+      blueValue = currentFadeVal;
+
+      rgbShow();
+      break;
+    //========== END FADE BLUE ==========
+
+    case 10://FADE VIOLET
+      redValue = currentFadeVal * 0.498;
+      greenValue = 0;
+      blueValue = currentFadeVal;
+
+      rgbShow();
+
+      if (blueValue > 0 && redValue == 0) {
+        //tertiary component is 1/2, so when it calculates to decimal with fade value,
+        //it will be basically be off, make sure to turn off other color so that
+        //it does not just show the other color
+        blueValue = 0;
+      }
+      break;
+    //========== END FADE VIOLET ==========
+
+    case 11://FADE MAGENTA
+      redValue = currentFadeVal;
+      greenValue = 0;
+      blueValue = currentFadeVal;
+
+      rgbShow();
+      break;
+    //========== END FADE MAGENTA ==========
+
+    case 12://FADE ROSE
+      redValue = currentFadeVal;
+      greenValue = 0;
+      blueValue = currentFadeVal * 0.498;
+
+      rgbShow();
+
+      if (redValue > 0 && blueValue == 0) {
+        //tertiary component is 1/2, so when it calculates to decimal with fade value,
+        //it will be basically be off, make sure to turn off other color so that
+        //it does not just show the other color
+        redValue = 0;
+      }
+      break;
+    //========== END FADE ROSE ==========
+
+    case 13://FADE WHITE
+      redValue = currentFadeVal;
+      greenValue = currentFadeVal;
+      blueValue = currentFadeVal;
+
+      rgbShow();
+      break;
+    //========== END FADE WHITE ==========
+
+    default:
+      allOFF();
+      rgbShow();
+      break;
+  }
+  rgbShow();
+  delay(fadeDelay);
+
+
+  if (increasing == true) {
+    currentFadeVal += fadeVal;
+  }
+  else { //decreasing
+    currentFadeVal -= fadeVal;
+  }
+
+  if (currentFadeVal > fadeMAX) {
+    increasing = false;
+    prevFadeVal -= fadeVal;//undo addition
+
+    currentFadeVal = prevFadeVal;
+
+  }
+  else if (currentFadeVal < fadeMIN) {
+    increasing = true;
+    prevFadeVal += fadeVal;//unto subtraction
+
+    currentFadeVal = prevFadeVal;
+  }
+
+  prevFadeVal = currentFadeVal;
+}//-------------------- END patternFade() FUNCTION --------------------
