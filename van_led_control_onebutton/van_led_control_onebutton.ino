@@ -1,6 +1,7 @@
 /*
-
+This program controls the LEDs in Stan the Van. There are three buttons and a single RGB LED channel.
 */
+#include <Arduino.h>
 #include <EEPROM.h>
 #include <OneButton.h>
 
@@ -56,11 +57,12 @@ struct memStore {
   float brightness_red;
   float brightness_pat;
   int color;
+  int color_mode;
 };
 
 //PatternFade variables
 int patternMode = 0;
-int colorMode = 0; //color mode to control LED color
+int colorMode = 1; //color mode to control LED color
 //vars to fade led
 int prevFadeVal = 0;
 int currentFadeVal = 0;
@@ -110,6 +112,7 @@ void setup() {
   brightnessLED_red = customVar.brightness_red;
   brightnessLED_pat = customVar.brightness_pat;
   currentColor = customVar.color;
+  colorMode = customVar.color_mode;
 
   
 }
@@ -136,8 +139,9 @@ void loop(){
       rgbShow();
     }
   } else if (patternMode == 1) {
-    patternMode();
     brightnessLED = brightnessLED_pat;
+    patternFade();
+    
   }
 
   
@@ -151,7 +155,8 @@ void loop(){
       memStore customVar = {
         brightnessLED_white,
         brightnessLED_red,
-        currentColor
+        currentColor,
+        colorMode
       };
       EEPROM.put(addr, customVar);
       writeToMem = false;
@@ -268,7 +273,7 @@ void rgbShow() {
   redValue = int(redValue * brightnessLED);
   greenValue = int(greenValue * brightnessLED);
   blueValue = int(blueValue * brightnessLED);
-  if patternMode == 0 {
+  if (patternMode == 0) {
     if (blueValue <= 3 && blueValue != 0) {
       blueValue =3;
     }
@@ -362,8 +367,6 @@ void colorChange() {
   }
 }
 
-
-
 void minBrightness() {
   if (patternMode == 0){
     if (currentColor == 1){ //white
@@ -383,10 +386,10 @@ void maxBrightness() {
     if (currentColor
     == 1){ //white
       brightnessLED_white = maxLEDBrightness;
-    } else {
+    } else { //red
       brightnessLED_red = maxLEDBrightness;
     } 
-  } else if (patternMode == 1){
+  } else if (patternMode == 1){ //fade
     brightnessLED_pat = minLEDBrightness;
   }
 
