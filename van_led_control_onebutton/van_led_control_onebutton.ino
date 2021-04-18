@@ -57,21 +57,21 @@ struct memStore {
   float brightness_red;
   float brightness_pat;
   int color;
-  int color_mode;
+  int rainRedVal;
+  int rainGreenVal;
+  int rainBlueVal;
 };
 
 //PatternFade variables
 int patternMode = 0;
-int colorMode = 1; //color mode to control LED color
-//vars to fade led
-int prevFadeVal = 0;
-int currentFadeVal = 0;
-boolean increasing = true;
-int fadeVal = 5; //value to step when increasing/decreasing, recommended to be 1 or 5, larger numbers will have problems lighting up
-int fadeMAX = 255; //maximum fade value
-int fadeMIN = 0;   //minimum fade value
-int fadeDelay = 30;//delay between each step
 
+//Variables to transition between RGB in a rainbow
+int rainbowRedVal = 0;
+int rainbowGreenVal = 0;
+int rainbowBlueVal = 0;
+int rainbowTransitionVal = 0;
+int rainbowDelay = 250; //in milliseconds to transition between colors
+unsigned long timeLastRainbow = 0;
 
 void setup() {
   // initialize serial communication at 9600 bits per second:
@@ -112,9 +112,11 @@ void setup() {
   brightnessLED_red = customVar.brightness_red;
   brightnessLED_pat = customVar.brightness_pat;
   currentColor = customVar.color;
-  colorMode = customVar.color_mode;
+  rainbowBlueVal = customVar.rainRedVal;
+  rainbowRedVal = customVar.rainBlueVal;
+  rainbowGreenVal = customVar.rainGreenVal;
 
-  
+  timeLastRainbow = millis();
 }
   
 void loop(){
@@ -140,7 +142,7 @@ void loop(){
     }
   } else if (patternMode == 1) {
     brightnessLED = brightnessLED_pat;
-    patternFade();
+    rainbowFade();
     
   }
 
@@ -156,7 +158,9 @@ void loop(){
         brightnessLED_white,
         brightnessLED_red,
         currentColor,
-        colorMode
+        rainbowBlueVal,
+        rainbowRedVal,
+        rainbowGreenVal
       };
       EEPROM.put(addr, customVar);
       writeToMem = false;
@@ -406,202 +410,74 @@ void changePattern(){
   }
 }
 
-void patternFade() {
 
-  switch (colorMode) {
-    case 1://FADE RED
-      redValue = currentFadeVal;
-      greenValue = 0;
-      blueValue = 0;
-
-      rgbShow();
-      break;
-    //========== END FADE RED ==========
-
-    case 2://FADE ORANGE
-      redValue = currentFadeVal;
-      greenValue = currentFadeVal * 0.498; // 128/255 = ~0.498039
-      blueValue = 0;
-
-      rgbShow();
-
-      if (redValue > 0 && greenValue == 0) {
-        //tertiary component is 1/2, so when it calculates to decimal with fade value,
-        //it will be basically be off, make sure to turn off other color so that
-        //it does not just show the other color
-        redValue = 0;
+void rainbowFade(){
+  if (timeLastRainbow + rainbowDelay <= millis()){
+      if (rainbowTransitionVal == 0) {
+      //RED
+      rainbowRedVal -= 5;
+      if (rainbowRedVal <= 0) {
+        rainbowTransitionVal = 1;
       }
-      // takes x amount of steps if you do not set it to zero for certain brightness (i.e. takes 8 more steps to turn off for 0.1)
-      //Serial.print("Red Value =");
-      //Serial.println( int((currentFadeVal) * brightnessLED));
+    }
+    else if (rainbowTransitionVal == 1) {
+      //RED TO ORANGE TO YELLOW
+      rainbowGreenVal -= 5;
 
-      //Serial.print("Green Value =");
-      //Serial.println( int((currentFadeVal * 0.498) * brightnessLED));
-      break;
-    //========== END FADE ORANGE ==========
-
-    case 3://FADE YELLOW
-      redValue = currentFadeVal;
-      greenValue = currentFadeVal;
-      blueValue = 0;
-
-      rgbShow();
-      break;
-    //========== END FADE YELLOW ==========
-
-    case 4://FADE CHARTRUESE
-      redValue = currentFadeVal * 0.498; // 128/255 = ~0.498039
-      greenValue = currentFadeVal;
-      blueValue = 0;
-
-      rgbShow();
-
-      if (greenValue > 0 && redValue == 0) {
-        //tertiary component is 1/2, so when it calculates to decimal with fade value,
-        //it will be basically be off, make sure to turn off other color so that
-        //it does not just show the other color
-        greenValue = 0;
+      if (rainbowGreenVal <= 0) {
+        rainbowTransitionVal = 2;
       }
-      break;
-    //========== END FADE CHARTRUESE ==========
+    }
+    else if (rainbowTransitionVal == 2) {
+      //YELLOW to CHARTREUSE to GREEN
+      rainbowRedVal += 5;
 
-    case 5://FADE GREEN
-      redValue = 0;
-      greenValue = currentFadeVal;
-      blueValue = 0;
-
-      rgbShow();
-      break;
-    //========== END FADE GREEN ==========
-
-    case 6://FADE SPRING GREEN
-      redValue = 0;
-      greenValue = currentFadeVal;
-      blueValue = currentFadeVal * 0.498; // 128/255 = ~0.498039
-
-      rgbShow();
-
-      if (greenValue > 0 && blueValue == 0) {
-        //tertiary component is 1/2, so when it calculates to decimal with fade value,
-        //it will be basically be off, make sure to turn off other color so that
-        //it does not just show the other color
-        greenValue = 0;
+      if (rainbowRedVal >= 255) {
+        rainbowTransitionVal = 3;
       }
-      break;
-    //========== END FADE SPRING GREEN ==========
+    }
+    else if (rainbowTransitionVal == 3) {
+      //GREEN to SPRING GREEN to CYAN
+      rainbowBlueVal -= 5;
 
-    case 7://FADE CYAN
-      redValue = 0;
-      greenValue = currentFadeVal;
-      blueValue = currentFadeVal;
-
-      rgbShow();
-      break;
-    //========== END FADE CYAN ==========
-
-    case 8://FADE AZURE
-      redValue = 0;
-      greenValue = currentFadeVal * 0.498; // 128/255 = ~0.498039
-      blueValue = currentFadeVal;
-
-      rgbShow();
-      if (blueValue > 0 && greenValue == 0) {
-        //tertiary component is 1/2, so when it calculates to decimal with fade value,
-        //it will be basically be off, make sure to turn off other color so that
-        //it does not just show the other color
-        blueValue = 0;
+      if (rainbowBlueVal <= 0) {
+        rainbowTransitionVal = 4;
       }
-      break;
-    //========== END FADE AZURE ==========
+    }
+    else if (rainbowTransitionVal == 4) {
+      //CYAN to AZURE to BLUE
+      rainbowGreenVal += 5;
 
-    case 9://FADE BLUE
-      redValue = 0;
-      greenValue = 0;
-      blueValue = currentFadeVal;
-
-      rgbShow();
-      break;
-    //========== END FADE BLUE ==========
-
-    case 10://FADE VIOLET
-      redValue = currentFadeVal * 0.498;
-      greenValue = 0;
-      blueValue = currentFadeVal;
-
-      rgbShow();
-
-      if (blueValue > 0 && redValue == 0) {
-        //tertiary component is 1/2, so when it calculates to decimal with fade value,
-        //it will be basically be off, make sure to turn off other color so that
-        //it does not just show the other color
-        blueValue = 0;
+      if (rainbowGreenVal >= 255) {
+        rainbowTransitionVal = 5;
       }
-      break;
-    //========== END FADE VIOLET ==========
+    }
+    else if (rainbowTransitionVal == 5) {
+      //BLUE to VIOLET to MAGENTA
+      rainbowRedVal -= 5;
 
-    case 11://FADE MAGENTA
-      redValue = currentFadeVal;
-      greenValue = 0;
-      blueValue = currentFadeVal;
-
-      rgbShow();
-      break;
-    //========== END FADE MAGENTA ==========
-
-    case 12://FADE ROSE
-      redValue = currentFadeVal;
-      greenValue = 0;
-      blueValue = currentFadeVal * 0.498;
-
-      rgbShow();
-
-      if (redValue > 0 && blueValue == 0) {
-        //tertiary component is 1/2, so when it calculates to decimal with fade value,
-        //it will be basically be off, make sure to turn off other color so that
-        //it does not just show the other color
-        redValue = 0;
+      if (rainbowRedVal <= 0) {
+        rainbowTransitionVal = 6;
       }
-      break;
-    //========== END FADE ROSE ==========
+    }
+    else if (rainbowTransitionVal == 6) {
+      //MAGENTA to ROSE to RED
+      rainbowBlueVal += 5;
 
-    case 13://FADE WHITE
-      redValue = currentFadeVal;
-      greenValue = currentFadeVal;
-      blueValue = currentFadeVal;
 
-      rgbShow();
-      break;
-    //========== END FADE WHITE ==========
+      if (rainbowBlueVal >= 255) {
+        rainbowTransitionVal = 1;
+      }
+    }
+  redValue = int(rainbowRedVal);
+  greenValue = int(rainbowGreenVal);
+  blueValue = int(rainbowBlueVal);
 
-    default:
-      allOFF();
-      rgbShow();
-      break;
-  }
+  // Note: the rainbow function calculates the function here so
+  // we do not need to call the `rgbCalc()` function
+
   rgbShow();
-  delay(fadeDelay);
-
-
-  if (increasing == true) {
-    currentFadeVal += fadeVal;
-  }
-  else { //decreasing
-    currentFadeVal -= fadeVal;
+  timeLastRainbow = millis();
   }
 
-  if (currentFadeVal > fadeMAX) {
-    increasing = false;
-    prevFadeVal -= fadeVal;//undo addition
-
-    currentFadeVal = prevFadeVal;
-
-  }
-  else if (currentFadeVal < fadeMIN) {
-    increasing = true;
-    prevFadeVal += fadeVal;//unto subtraction
-
-    currentFadeVal = prevFadeVal;
-  }
-
-  prevFadeVal = currentFadeVal;
-}//-------------------- END patternFade() FUNCTION --------------------
+}
