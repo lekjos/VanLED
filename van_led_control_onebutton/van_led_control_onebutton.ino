@@ -395,7 +395,7 @@ void maxBrightness() {
       brightnessLED_red = maxLEDBrightness;
     } 
   } else if (patternMode == 1){ //fade
-    brightnessLED_pat = minLEDBrightness;
+    brightnessLED_pat = maxLEDBrightness;
   }
 
   timeLastChange = millis();
