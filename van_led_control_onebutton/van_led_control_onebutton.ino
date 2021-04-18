@@ -57,9 +57,7 @@ struct memStore {
   float brightness_red;
   float brightness_pat;
   int color;
-  int rainRedVal;
-  int rainGreenVal;
-  int rainBlueVal;
+  int rainTransition;
 };
 
 //PatternFade variables
@@ -112,9 +110,8 @@ void setup() {
   brightnessLED_red = customVar.brightness_red;
   brightnessLED_pat = customVar.brightness_pat;
   currentColor = customVar.color;
-  rainbowBlueVal = customVar.rainRedVal;
-  rainbowRedVal = customVar.rainBlueVal;
-  rainbowGreenVal = customVar.rainGreenVal;
+  rainbowTransitionVal = customVar.rainTransition;
+
 
   timeLastRainbow = millis();
 }
@@ -158,9 +155,7 @@ void loop(){
         brightnessLED_white,
         brightnessLED_red,
         currentColor,
-        rainbowBlueVal,
-        rainbowRedVal,
-        rainbowGreenVal
+        rainbowTransitionVal
       };
       EEPROM.put(addr, customVar);
       writeToMem = false;
