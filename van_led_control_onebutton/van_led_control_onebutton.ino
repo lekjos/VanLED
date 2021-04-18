@@ -472,9 +472,9 @@ void rainbowFade(){
   // Note: the rainbow function calculates the function here so
   // we do not need to call the `rgbCalc()` function
 
-  
+  rgbShow();
   timeLastRainbow = millis();
   } // end last update conditional
-  rgbShow();
+  
 
 }
