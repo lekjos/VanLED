@@ -306,6 +306,9 @@ void decreaseBrightness() { //red
       Serial.println(brightnessLED);
     #endif
     delay(holdStepTime);
+    if(patternMode == 1){
+      rgbShow();
+      }
     timeLastChange = millis();
     writeToMem = true;
 }
@@ -339,6 +342,9 @@ void increaseBrightness() {
       #endif 
 
   delay(holdStepTime);
+  if(patternMode == 1){
+      rgbShow();
+      }
   timeLastChange = millis();
   writeToMem = true;
 }
