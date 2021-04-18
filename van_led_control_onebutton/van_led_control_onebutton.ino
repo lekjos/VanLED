@@ -309,7 +309,7 @@ void decreaseBrightness() { //red
           brightnessLED_red -= fadeAmount;
       }      
       }
-    } else if (patternMode == 1) {
+    } else if (patternMode == 1) { // rainbow
       if(brightnessLED_pat > (minLEDBrightness + fadeAmount)){
           brightnessLED_pat -= fadeAmount;
       }
