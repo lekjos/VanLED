@@ -14,7 +14,7 @@ This program controls the LEDs in Stan the Van. There are three buttons and a si
 int addr = 0;  // eeprom address
 unsigned long timeLastChange = 0;
 bool writeToMem = false; 
-int memWriteInterval = 1000;
+int memWriteInterval = 10000;
 
 //define led output pins
 #define redPin 3
@@ -39,7 +39,7 @@ OneButton buttonColor(colorChangePin, true);
 float brightnessLED = .1;
 float brightnessLED_white = .1;
 float brightnessLED_red = .1;
-float brightnessLED_pat = .1;
+float brightnessLED_pat = .5;
 const float fadeAmount = 0.01;
 const int holdStepTime = 45; //ms
 const float minLEDBrightness = 0.05;
@@ -112,8 +112,9 @@ void setup() {
   currentColor = customVar.color;
   rainbowTransitionVal = customVar.rainTransition;
 
+  //set current time as last written time
+  timeLastChange = millis();
 
-  timeLastRainbow = millis();
 }
   
 void loop(){
