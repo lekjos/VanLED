@@ -13,6 +13,7 @@ This program controls the LEDs in Stan the Van. There are three buttons and a si
 //memory vars
 int addr = 0;  // eeprom address
 unsigned long timeLastChange = 0;
+unsigned long timeLastHold = 0;
 bool writeToMem = false; 
 int memWriteInterval = 10000;
 
@@ -67,8 +68,9 @@ int patternMode = 0;
 int rainbowRedVal = 0;
 int rainbowGreenVal = 0;
 int rainbowBlueVal = 0;
+int rainbowStep = 1;
 int rainbowTransitionVal = 0;
-int rainbowDelay = 250; //in milliseconds to transition between colors
+int rainbowDelay = 75; //in milliseconds to transition between colors
 unsigned long timeLastRainbow = 0;
 
 void setup() {
@@ -269,15 +271,15 @@ void whiteON() {
 
 
 void rgbShow() {
-
-  redValue = int(redValue * brightnessLED);
-  greenValue = int(greenValue * brightnessLED);
-  blueValue = int(blueValue * brightnessLED);
-  if (patternMode == 0) {
+if (patternMode == 0) {
+    redValue = int(redValue * brightnessLED);
+    greenValue = int(greenValue * brightnessLED);
+    blueValue = int(blueValue * brightnessLED);
     if (blueValue <= 3 && blueValue != 0) {
       blueValue =3;
     }
-  }
+  } //else if patternMode == 1, do just show the values
+
   //once value is calculated, show the LED color
   analogWrite(redPin, redValue);
   analogWrite(greenPin, greenValue);
@@ -285,68 +287,65 @@ void rgbShow() {
 }
 
 void decreaseBrightness() { //red
-  if (patternMode == 0){
-    if (currentColor == 1){
-      if(brightnessLED_white > (minLEDBrightness + fadeAmount)){
-        brightnessLED_white -= fadeAmount;
-     }
-    } else { //red
-      if(brightnessLED_red > (minLEDBrightness + fadeAmount)){
-        brightnessLED_red -= fadeAmount;
-     }      
-    }
-  } else if (patternMode == 1) {
-    if(brightnessLED_pat > (minLEDBrightness + fadeAmount)){
-        brightnessLED_pat -= fadeAmount;
-    }
-  }
-    
-    #if DEBUG        
-      Serial.print("brightness down ");
-      Serial.println(brightnessLED);
-    #endif
-    delay(holdStepTime);
-    if(patternMode == 1){
-      rgbShow();
+  if (timeLastHold + holdStepTime <= millis()){
+    if (patternMode == 0){
+      if (currentColor == 1){
+        if(brightnessLED_white > (minLEDBrightness + fadeAmount)){
+          brightnessLED_white -= fadeAmount;
       }
-    timeLastChange = millis();
-    writeToMem = true;
+      } else { //red
+        if(brightnessLED_red > (minLEDBrightness + fadeAmount)){
+          brightnessLED_red -= fadeAmount;
+      }      
+      }
+    } else if (patternMode == 1) {
+      if(brightnessLED_pat > (minLEDBrightness + fadeAmount)){
+          brightnessLED_pat -= fadeAmount;
+      }
+    }
+      
+      #if DEBUG        
+        Serial.print("brightness down ");
+        Serial.println(brightnessLED);
+      #endif
+      timeLastChange = millis();
+      timeLastHold = timeLastChange;
+      writeToMem = true;
+  }
 }
 
 void increaseBrightness() {
-  if (patternMode == 0){
-    if (currentColor == 1){
-      if (brightnessLED_white < (maxLEDBrightness - fadeAmount)){
-        brightnessLED_white += fadeAmount;
+  if (timeLastHold + holdStepTime <= millis()){
+    if (patternMode == 0){
+      if (currentColor == 1){
+        if (brightnessLED_white < (maxLEDBrightness - fadeAmount)){
+          brightnessLED_white += fadeAmount;
+        }
+      } else {
+        if (brightnessLED_red < (maxLEDBrightness - fadeAmount)){
+          brightnessLED_red += fadeAmount;   
+        }  
       }
-    } else {
-       if (brightnessLED_red < (maxLEDBrightness - fadeAmount)){
-        brightnessLED_red += fadeAmount;   
-       }  
+    } else if (patternMode == 1) {
+      if (brightnessLED_pat < (maxLEDBrightness - fadeAmount)){
+          brightnessLED_pat += fadeAmount;   
+        } 
     }
-  } else if (patternMode == 1) {
-    if (brightnessLED_pat < (maxLEDBrightness - fadeAmount)){
-        brightnessLED_pat += fadeAmount;   
-       } 
+
+        #if DEBUG
+          Serial.print("brightness up ");
+          Serial.println(brightnessLED);
+          Serial.print("R: ");
+          Serial.print(redValue);
+          Serial.print("G: ");
+          Serial.print(greenValue);
+          Serial.print("B: ");
+          Serial.println(blueValue);
+        #endif 
+    timeLastChange = millis();
+    timeLastHold = timeLastChange;
+    writeToMem = true;
   }
-
-      #if DEBUG
-        Serial.print("brightness up ");
-        Serial.println(brightnessLED);
-        Serial.print("R: ");
-        Serial.print(redValue);
-        Serial.print("G: ");
-        Serial.print(greenValue);
-        Serial.print("B: ");
-        Serial.println(blueValue);
-      #endif 
-
-  delay(holdStepTime);
-  if(patternMode == 1){
-      rgbShow();
-      }
-  timeLastChange = millis();
-  writeToMem = true;
 }
 
 void colorChange() {
@@ -417,14 +416,14 @@ void rainbowFade(){
   if (timeLastRainbow + rainbowDelay <= millis()){
       if (rainbowTransitionVal == 0) {
       //RED
-      rainbowRedVal -= 5;
+      rainbowRedVal -= rainbowStep;
       if (rainbowRedVal <= 0) {
         rainbowTransitionVal = 1;
       }
     }
     else if (rainbowTransitionVal == 1) {
       //RED TO ORANGE TO YELLOW
-      rainbowGreenVal -= 5;
+      rainbowGreenVal -= rainbowStep;
 
       if (rainbowGreenVal <= 0) {
         rainbowTransitionVal = 2;
@@ -432,7 +431,7 @@ void rainbowFade(){
     }
     else if (rainbowTransitionVal == 2) {
       //YELLOW to CHARTREUSE to GREEN
-      rainbowRedVal += 5;
+      rainbowRedVal += rainbowStep;
 
       if (rainbowRedVal >= 255) {
         rainbowTransitionVal = 3;
@@ -440,7 +439,7 @@ void rainbowFade(){
     }
     else if (rainbowTransitionVal == 3) {
       //GREEN to SPRING GREEN to CYAN
-      rainbowBlueVal -= 5;
+      rainbowBlueVal -= rainbowStep;
 
       if (rainbowBlueVal <= 0) {
         rainbowTransitionVal = 4;
@@ -448,7 +447,7 @@ void rainbowFade(){
     }
     else if (rainbowTransitionVal == 4) {
       //CYAN to AZURE to BLUE
-      rainbowGreenVal += 5;
+      rainbowGreenVal += rainbowStep;
 
       if (rainbowGreenVal >= 255) {
         rainbowTransitionVal = 5;
@@ -456,7 +455,7 @@ void rainbowFade(){
     }
     else if (rainbowTransitionVal == 5) {
       //BLUE to VIOLET to MAGENTA
-      rainbowRedVal -= 5;
+      rainbowRedVal -= rainbowStep;
 
       if (rainbowRedVal <= 0) {
         rainbowTransitionVal = 6;
@@ -464,19 +463,16 @@ void rainbowFade(){
     }
     else if (rainbowTransitionVal == 6) {
       //MAGENTA to ROSE to RED
-      rainbowBlueVal += 5;
+      rainbowBlueVal += rainbowStep;
 
 
       if (rainbowBlueVal >= 255) {
         rainbowTransitionVal = 1;
       }
     }
-  redValue = int(rainbowRedVal);
-  greenValue = int(rainbowGreenVal);
-  blueValue = int(rainbowBlueVal);
-
-  // Note: the rainbow function calculates the function here so
-  // we do not need to call the `rgbCalc()` function
+  redValue = int(rainbowRedVal * brightnessLED);
+  greenValue = int(rainbowGreenVal * brightnessLED);
+  blueValue = int(rainbowBlueVal * brightnessLED);
 
   rgbShow();
   timeLastRainbow = millis();
