@@ -137,7 +137,7 @@ void loop(){
       brightnessLED = brightnessLED_red;
       rgbShow();
     }
-  } else if (patternMode == 1) {
+  } else if (patternMode == 1) { // if in rainbow mode
     brightnessLED = brightnessLED_pat;
     rainbowFade();
     
